@@ -2,16 +2,22 @@ import asyncio
 import base64
 from typing import List, Optional, Tuple
 import httpx
-from .configs.config import redirect_uri
-from .models.models import FileEntry
+from codebase_kb.crawler.configs.config import redirect_uri
+from codebase_kb.crawler.models.models import FileEntry,CommitEntry
+from codebase_kb.crawler.utils.tree_parser import build_tree,print_tree
 import dotenv
+import tqdm
 import os
 from dotenv import load_dotenv
 import requests
-class GitHubRateLimitExceeded(Exception):
-    """Raised when GitHub API rate limit is exceeded."""
-    pass
+
 load_dotenv()
+
+class GitHubRateLimitExceeded(Exception):
+    """raised when GitHub API rate limit is exceeded."""
+    pass
+
+
 client_secret=os.getenv("client_secret")
 client_id=os.getenv("client_id")
 
@@ -98,6 +104,57 @@ token: str,
     response.raise_for_status()
     return response
 
+async def fetch_commit_history(
+    repo_url: str,
+    github_token: str,
+    branch: Optional[str] = None,
+    limit: int = 100  # Default to last 100 commits to avoid massive downloads
+) -> List[CommitEntry]:
+    """
+    Fetch the commit history for a specific repository.
+    """
+    owner, repo = _parse_github_url(repo_url)
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        if branch is None:
+            branch = await _get_default_branch(client, owner, repo, github_token)
+        commits_url = f"https://api.github.com/repos/{owner}/{repo}/commits"
+        fetched_commits: List[CommitEntry] = []
+        page = 1
+        with tqdm.tqdm(total=limit, desc=f"Fetching Commits for {repo}", unit="commit") as pbar:
+            while len(fetched_commits) < limit:
+                # GitHub allows max 100 per page
+                per_page = min(100, limit - len(fetched_commits))
+                params = {
+                    "sha": branch,
+                    "per_page": per_page,
+                    "page": page
+                }
+                try:
+                    response = await _github_request(client, "GET", commits_url, github_token, params=params)
+                    data = response.json()
+                    # if data is empty, then reached the very earliest commit of the repo
+                    if not data:
+                        break
+                    for item in data:
+                        # extract the valuable parts of the commit payload
+                        fetched_commits.append(CommitEntry(
+                            sha=item["sha"],
+                            author=item["commit"]["author"]["name"],
+                            date=item["commit"]["author"]["date"],
+                            message=item["commit"]["message"]
+                        ))
+                        pbar.update(1)
+                        
+                        if len(fetched_commits) >= limit:
+                            break
+                    page += 1
+                except httpx.HTTPStatusError as e:
+                    tqdm.tqdm.write(f"Failed to fetch commit page {page}: {e}")
+                    break
+
+        return fetched_commits
+
 async def fetch_github_repo(
     repo_url: str,
     github_token: str,
@@ -136,7 +193,8 @@ async def fetch_github_repo(
 
         # Process each file in the tree
         entries: List[FileEntry] = []
-        for item in tree:
+        files_only = [item for item in tree if item["type"] == "blob"]
+        for item in tqdm.tqdm(files_only, desc=f"Downloading {owner}/{repo}", unit="file"):
             if item["type"] == "blob":  # file
                 path = item["path"]
                 # Get raw bytes of the file
@@ -156,7 +214,6 @@ async def fetch_github_repo(
                     #skip as binary
                     continue
                 entries.append(FileEntry(path=path, content=content))
-
         return entries
 
 def _parse_github_url(repo_url: str) -> Tuple[str, str]:
@@ -215,6 +272,14 @@ async def _get_tree_recursive(
     params = {"recursive": "1"}
     response = await _github_request(client, "GET", url, token, params=params)
     data = response.json()
+    paths=[]
+    for d in data["tree"]:
+        paths.append(d["path"])
+    t=build_tree(paths=paths)
+    print("*"*50,"\n")
+    print("TREE STRUCTURE \n")
+    print("*"*50,"\n")
+    print_tree(t)
     return data["tree"]
 
 async def _get_file_raw_bytes(
@@ -240,3 +305,31 @@ def _is_binary(content: bytes) -> bool:
     """
     # Check first 8192 bytes for null byte
     return b"\x00" in content[:8192]
+
+
+if __name__== "__main__":
+    repository_url="https://github.com/KaiAllAlone/FlipGears"
+    github_token=os.getenv("GITHUB_TOKEN")
+    if(not github_token):
+        github_token=asyncio.run(exchange_code_for_token(client_id))
+        dotenv.set_key(".env","GITHUB_TOKEN",github_token)
+    load_dotenv(override=True)
+    repo_entries=asyncio.run(fetch_github_repo(repository_url,github_token,max_file_size=1024*1024))
+    for entries in repo_entries:
+        print(entries.path)
+        print(entries.content[:50]," ... ")
+        print("\n")
+    print("*"*50,"\n")
+    print("COMMIT HISTORY \n")
+    print("*"*50,"\n")
+    commits=asyncio.run(fetch_commit_history(repo_url=repository_url,github_token=github_token))
+    for commit in commits:
+        print("COMMIT SHA:- \n",commit.sha,"\n")
+        print("COMMIT AUTHOR:- \n",commit.author,"\n")
+        print("COMMIT MESSAGE:- \n",commit.message,"\n")
+        print("COMMIT DATE:- \n",commit.date,"\n")
+        print(commit.sha)
+
+
+    
+
