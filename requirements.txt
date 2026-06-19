@@ -4,3 +4,5 @@ langgraph
 networkx
 numpy
 scipy
+httpx
+python-dotenv

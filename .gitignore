@@ -8,7 +8,8 @@
 venv/
 env/
 ENV/
-
+myenv
+.gitignore
 # Python
 __pycache__/
 *.py[cod]
@@ -20,7 +21,7 @@ htmlcov/
 dist/
 build/
 *.egg-info/
-
+secrets
 # Node / Next.js
 node_modules/
 .next/
@@ -30,7 +31,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
+requests
 # IDE / OS
 .DS_Store
 .vscode/
