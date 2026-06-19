@@ -2,3 +2,5 @@ fastapi
 uvicorn
 langgraph
 networkx
+numpy
+scipy
