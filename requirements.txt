@@ -3,3 +3,4 @@ uvicorn
 langgraph
 networkx
 httpx
+dotenv

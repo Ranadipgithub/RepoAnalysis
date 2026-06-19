@@ -2,39 +2,101 @@ import asyncio
 import base64
 from typing import List, Optional, Tuple
 import httpx
+from crawler.config import redirect_uri
 from .models import FileEntry
-
+import dotenv
+from dotenv import load_dotenv
+import requests
 class GitHubRateLimitExceeded(Exception):
     """Raised when GitHub API rate limit is exceeded."""
     pass
 
-async def _github_request(
+
+client_secret=load_dotenv("client_secret")
+client_id=load_dotenv("client_id")
+
+
+async def exchange_code_for_token(
+    client_id: str,
+    client_secret: str,
+    code: str
+) -> str:
+    """
+    Exchanges the temporary GitHub OAuth code for a permanent access token.
+    """
+    headers = {
+        "Accept": "application/json"  # Tells GitHub to return JSON instead of URL-encoded text
+    }
+    async with httpx.AsyncClient() as client:
+        url = "https://github.com/login/device/code"
+        
+        data = {
+            "client_id": client_id,
+        }
+        
+        device_code=requests.get(url=url,data=data,headers=headers)
+        print('='*50)
+        print("\n")
+        print("User Code= ",device_code['user_code'],"\n")
+        print("Device Code= ",device_code['device_code'],"\n")
+        print("verification URI= ",device_code['verification_uri'],"\n")
+        print("Please go to the Verfication URI  to authorize")
+        print("\n")
+        print('='*50)
+        token_url = "https://github.com/login/oauth/access_token"
+        poll_data = {
+                "client_id": client_id,
+                "device_code": device_code,
+                "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            }
+            
+        while True:
+            await asyncio.sleep(interval) # Wait the required minimum timeframe
+            
+            poll_response = await client.post(token_url, data=poll_data, headers=headers)
+            poll_result = poll_response.json()
+            
+            # If we get the token, return it!
+            if "access_token" in poll_result:
+                print("\nSuccess! Token acquired.")
+                return poll_result["access_token"]
+                
+            # If still pending, just keep looping
+            error = poll_result.get("error")
+            if error == "authorization_pending":
+                continue
+            elif error == "slow_down":
+                interval += 5 # GitHub says to wait 5 seconds longer
+            else:
+                raise Exception(f"OAuth Error: {poll_result}")
+
+    async def _github_request(
     client: httpx.AsyncClient,
     method: str,
     url: str,
     token: str,
     **kwargs
     ) -> httpx.Response:
-    """Make a request to GitHub API with authentication and rate limit handling."""
-    headers = {
-        "Authorization": f"token {token}",
-        "Accept": "application/vnd.github.v3+json",
-        **kwargs.pop("headers", {}),
-    }
-    response = await client.request(method, url, headers=headers, **kwargs)
+        """Make a request to GitHub API with authentication and rate limit handling."""
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json",
+            **kwargs.pop("headers", {}),
+        }
+        response = await client.request(method, url, headers=headers, **kwargs)
 
-    # Check for rate limit exceeded
-    if response.status_code == 403:
-        # gitHub returns 403 for rate limit exceeded with header "X-RateLimit-Remaining: 0"
-        remaining = response.headers.get("X-RateLimit-Remaining")
-        if remaining == "0":
-            reset_time = response.headers.get("X-RateLimit-Reset")
-            raise GitHubRateLimitExceeded(
-                f"GitHub API rate limit exceeded. Reset at {reset_time}"
-            )
-    # For other errors, raise for status
-    response.raise_for_status()
-    return response
+        # Check for rate limit exceeded
+        if response.status_code == 403:
+            # gitHub returns 403 for rate limit exceeded with header "X-RateLimit-Remaining: 0"
+            remaining = response.headers.get("X-RateLimit-Remaining")
+            if remaining == "0":
+                reset_time = response.headers.get("X-RateLimit-Reset")
+                raise GitHubRateLimitExceeded(
+                    f"GitHub API rate limit exceeded. Reset at {reset_time}"
+                )
+        # For other errors, raise for status
+        response.raise_for_status()
+        return response
 
 async def fetch_github_repo(
     repo_url: str,
