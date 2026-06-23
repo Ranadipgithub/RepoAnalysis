@@ -1,6 +1,6 @@
 import asyncio
 from src.codebase_kb.crawler.github import get_output
-from src.codebase_kb.graph.nodes.state import KnowledgeBuilderState
+from backend.src.codebase_kb.graph.models.state import KnowledgeBuilderState
 from typing import Dict,List,Any
 
 async def fetch_repo_node(state: KnowledgeBuilderState) -> Dict[str,List[Any]]:
