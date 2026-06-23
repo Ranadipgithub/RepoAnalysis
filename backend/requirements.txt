@@ -13,3 +13,5 @@ langchain_openai
 langchain_google_genai
 matplotlib
 langchain_huggingface
+jinja2
+pydantic

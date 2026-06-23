@@ -6,8 +6,8 @@ from src.codebase_kb.graph.models import KnowledgeBuilderState
 # Assuming you will create these node functions next in src/codebase_kb/graph/nodes/
 from src.codebase_kb.graph.nodes import fetch_repo_node
 from src.codebase_kb.graph.nodes import build_code_graph_node
-from .nodes.identify_abstractions import identify_abstractions_node
-from .nodes.analyze_relationships import analyze_relationships_node
+from src.codebase_kb.graph.nodes import identify_abstractions_node
+from src.codebase_kb.graph.nodes import analyze_relationships_node
 from .nodes.order_chapters import order_chapters_node
 from .nodes.write_chapters import write_chapter_single
 from .nodes.combine_tutorial import combine_tutorial_node

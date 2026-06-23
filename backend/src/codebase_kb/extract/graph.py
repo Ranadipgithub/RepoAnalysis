@@ -37,40 +37,40 @@ class CodeGraph:
         for e in edges:
             self.g.add_edge(e.src, e.dst, kind=e.kind, label=e.label)
 
-    def core_abstractions(self, k: int = 15) -> List[Tuple[str, float]]:
+    def core_abstractions(self, k: int = 15) -> List[CodeNode]:
         """Finds the Top-K architecturally important INTERNAL nodes."""
         if self.g.number_of_nodes() == 0:
             return []
-            
         pr = nx.pagerank(self.g)
-        
-        # Filter out external libraries (like numpy) and built-ins (like tuple).
-        # Real nodes from this repo were added with 'kind', 'name', and 'file' attributes.
         internal_nodes = {
             node_id: score 
             for node_id, score in pr.items() 
-            if "kind" in self.g.nodes[node_id]  # Only keep nodes defined in the codebase
+            if "kind" in self.g.nodes[node_id]
         }
-        
-        # Sort only the internal nodes by their PageRank score
-        return sorted(internal_nodes.items(), key=lambda x: -x[1])[:k]
+        top_k_items = sorted(internal_nodes.items(), key=lambda x: -x[1])[:k]
+        top_k_nodes = []
+        for node_id, score in top_k_items:
 
-    def communities(self) -> List[Set[str]]:
+            node_data = self.g.nodes[node_id]
+            top_k_nodes.append(CodeNode(**node_data))
+            
+        return top_k_nodes
+    def communities(self) -> List[Set['CodeNode']]:
         """Groups tightly coupled internal files into natural chapter groupings."""
-        
-        # Identify all internal nodes
         internal_nodes = [n for n, attr in self.g.nodes(data=True) if "kind" in attr]
-        
-        # Create a sub-graph of ONLY the internal nodes
         internal_subgraph = self.g.subgraph(internal_nodes).to_undirected()
-        
-        # Run the community detection on the pure internal architecture
         if internal_subgraph.number_of_nodes() == 0:
             return []
             
         comms = nx.community.louvain_communities(internal_subgraph, seed=42)
-        
-        return list(comms)
+        node_communities = []
+        for community in comms:
+            node_set = set()
+            for node_id in community:
+                node_data = self.g.nodes[node_id]
+                node_set.add(CodeNode(**node_data))
+            node_communities.append(node_set)
+        return node_communities
 
     def chapter_order_indices(self, abstraction_ids: List[str]) -> List[int]:
         """Creates a linear teaching order (Prerequisites first)."""

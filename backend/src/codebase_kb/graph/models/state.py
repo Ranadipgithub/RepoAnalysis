@@ -1,13 +1,16 @@
 import operator
 from typing import TypedDict, Optional, List, Dict, Any, Annotated
+from src.codebase_kb.extract.graph import CodeGraph
 
 class KnowledgeBuilderState(TypedDict, total=False):
     # --- inputs (set once when run starts) ---
     repo_url: str
     client_id:str
+    user_id: str
+    provider: str
     # --- intermediate ---
     files: List[Dict[str, str]]              
-    code_graph: Dict[str, Any]               
+    code_graph: CodeGraph              
     abstractions: List[Dict[str, Any]]       
     relationships: List[Dict[str, Any]]      
     chapter_order: List[int]

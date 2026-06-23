@@ -45,12 +45,13 @@ def test_on_real_repo(repo_path: str):
     # 2. Test PageRank (Are the Core Abstractions accurate?)
     print("\n--- Top 10 Core Concepts (PageRank) ---")
     top_nodes = cg.core_abstractions(k=10)
-    for node_id, score in top_nodes:
-        # Get the node data to print the human-readable name
-        node_data = cg.g.nodes[node_id]
-        name = node_data.get('name', node_id)
-        kind = node_data.get('kind', 'unknown')
-        print(f"Score: {score:.4f} | [{kind.upper()}] {name}")
+    # for node_id, score in top_nodes:
+    #     # Get the node data to print the human-readable name
+    #     node_data = cg.g.nodes[node_id]
+    #     name = node_data.get('name', node_id)
+    #     kind = node_data.get('kind', 'unknown')
+    #     print(f"Score: {score:.4f} | [{kind.upper()}] {name}")
+    print(top_nodes)
 
     # 3. Test Communities (Are the chapter groupings logical?)
     print("\n--- Architectural Communities (Chapters) ---")
@@ -64,4 +65,4 @@ def test_on_real_repo(repo_path: str):
 
 if __name__ == "__main__":
     # Change this to the path where you cloned a repo like 'requests'
-    test_on_real_repo("C:/Users/HP/OneDrive/Desktop/RepoAnalysis/Q-Learning-From-Scratch")
+    test_on_real_repo("/home/debanuj/Desktop/Repo Analysis_Rana/RepoAnalysis/Q-Learning-From-Scratch")

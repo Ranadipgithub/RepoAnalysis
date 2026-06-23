@@ -1,6 +1,6 @@
 from src.codebase_kb.extract.ast_python import parse_python_file
 from src.codebase_kb.extract.graph import CodeGraph
-from src.codebase_kb.graph.nodes.state import KnowledgeBuilderState 
+from backend.src.codebase_kb.graph.models.state import KnowledgeBuilderState 
 import networkx as nx
 from typing import Dict
 

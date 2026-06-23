@@ -16,5 +16,7 @@ _env = Environment(
 )
 
 def render_prompt(name: str, **vars) -> str:
-    """Load `name.md` and render with `vars`."""
-    return _env.get_template(f"{name}.md").render(**vars) #
+    """
+    Load `name.md` and render with `vars`.
+    """
+    return _env.get_template(f"{name}.md").render(**vars) 
