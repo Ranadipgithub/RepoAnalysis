@@ -1,8 +1,10 @@
 from src.codebase_kb.extract.ast_python import parse_python_file
 from src.codebase_kb.extract.graph import CodeGraph
+from src.codebase_kb.graph.nodes.state import KnowledgeBuilderState 
 import networkx as nx
+from typing import Dict
 
-def build_code_graph_node(state: dict) -> dict:
+def build_code_graph_node(state: KnowledgeBuilderState) -> Dict[str,CodeGraph]:
     """Node 2: Parses the raw text into the NetworkX AST Graph."""
     cg = CodeGraph()
     
