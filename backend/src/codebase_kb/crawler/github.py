@@ -8,6 +8,7 @@ from codebase_kb.crawler.utils.tree_parser import build_tree,print_tree
 import dotenv
 import tqdm
 import os
+from typing import Dict,List
 from dotenv import load_dotenv
 import requests
 
@@ -20,8 +21,8 @@ class GitHubRateLimitExceeded(Exception):
 
 client_secret=os.getenv("client_secret")
 client_id=os.getenv("client_id")
-
-
+project_tree=None
+output=None
 async def exchange_code_for_token(
     client_id: str,
 ) -> str:
@@ -193,27 +194,26 @@ async def fetch_github_repo(
 
         # Process each file in the tree
         entries: List[FileEntry] = []
-        files_only = [item for item in tree if item["type"] == "blob"]
+        files_only = [item for item in tree if item["type"] == "blob" and (item["path"].endswith(".py"))]
         for item in tqdm.tqdm(files_only, desc=f"Downloading {owner}/{repo}", unit="file"):
-            if item["type"] == "blob":  # file
-                path = item["path"]
-                # Get raw bytes of the file
-                raw_bytes = await _get_file_raw_bytes(
-                    client, owner, repo, path, branch, github_token
-                )
-                # Skip if too large
-                if len(raw_bytes) > max_file_size:
-                    continue
-                # Check for binary (null byte in first 8KB)
-                if _is_binary(raw_bytes):
-                    continue
-                # Decode to string
-                try:
-                    content = raw_bytes.decode("utf-8")
-                except UnicodeDecodeError:
-                    #skip as binary
-                    continue
-                entries.append(FileEntry(path=path, content=content))
+            path = item["path"]
+            # Get raw bytes of the file
+            raw_bytes = await _get_file_raw_bytes(
+                client, owner, repo, path, branch, github_token
+            )
+            # Skip if too large
+            if len(raw_bytes) > max_file_size:
+                continue
+            # Check for binary (null byte in first 8KB)
+            if _is_binary(raw_bytes):
+                continue
+            # Decode to string
+            try:
+                content = raw_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                #skip as binary
+                continue
+            entries.append(FileEntry(path=path, content=content))
         return entries
 
 def _parse_github_url(repo_url: str) -> Tuple[str, str]:
@@ -275,11 +275,8 @@ async def _get_tree_recursive(
     paths=[]
     for d in data["tree"]:
         paths.append(d["path"])
-    t=build_tree(paths=paths)
-    print("*"*50,"\n")
-    print("TREE STRUCTURE \n")
-    print("*"*50,"\n")
-    print_tree(t)
+    global project_tree
+    project_tree=build_tree(paths=paths)
     return data["tree"]
 
 async def _get_file_raw_bytes(
@@ -306,29 +303,22 @@ def _is_binary(content: bytes) -> bool:
     # Check first 8192 bytes for null byte
     return b"\x00" in content[:8192]
 
-
-if __name__== "__main__":
-    repository_url="https://github.com/KaiAllAlone/FlipGears"
+async def get_output(
+    repo_url: str,
+    client_id:str, # 100 KB
+) -> List[Dict[str,str]]:
+    """ Get the output in the form of Dictionary {file_path:content}"""
+    output=dict()
     github_token=os.getenv("GITHUB_TOKEN")
     if(not github_token):
         github_token=asyncio.run(exchange_code_for_token(client_id))
         dotenv.set_key(".env","GITHUB_TOKEN",github_token)
     load_dotenv(override=True)
-    repo_entries=asyncio.run(fetch_github_repo(repository_url,github_token,max_file_size=1024*1024))
-    for entries in repo_entries:
-        print(entries.path)
-        print(entries.content[:50]," ... ")
-        print("\n")
-    print("*"*50,"\n")
-    print("COMMIT HISTORY \n")
-    print("*"*50,"\n")
-    commits=asyncio.run(fetch_commit_history(repo_url=repository_url,github_token=github_token))
-    for commit in commits:
-        print("COMMIT SHA:- \n",commit.sha,"\n")
-        print("COMMIT AUTHOR:- \n",commit.author,"\n")
-        print("COMMIT MESSAGE:- \n",commit.message,"\n")
-        print("COMMIT DATE:- \n",commit.date,"\n")
-        print(commit.sha)
+    entries=await fetch_github_repo(repo_url,github_token)
+    for entry in entries:
+        output[entry.path]=entry.content
+    return output
+
 
 
     
