@@ -24,7 +24,12 @@ class CodeGraph:
             instance.g.add_edge(edge["src"], edge["dst"], **edge)
             
         # 2. Restore the pre-calculated metrics (PageRank, Communities)
-        instance.metrics = payload.get("metrics", {})
+        instance.metrics = payload.get("metrics", {"pagerank": {}, "communities": []})
+        
+        # Persist per-node pagerank from metrics (in case add_nodes didn't compute it)
+        for nid, score in instance.metrics.get("pagerank", {}).items():
+            if nid in instance.g.nodes:
+                instance.g.nodes[nid]["pagerank"] = score
         
         return instance
     
@@ -36,6 +41,27 @@ class CodeGraph:
     def add_edges(self, edges: List[CodeEdge]) -> None:
         for e in edges:
             self.g.add_edge(e.src, e.dst, kind=e.kind, label=e.label)
+    
+    def recompute_metrics(self):
+        """Call this once after add_nodes + add_edges."""
+        if self.g.number_of_nodes() == 0:
+            return
+        pr = nx.pagerank(self.g)
+        for nid, score in pr.items():
+            self.g.nodes[nid]["pagerank"] = score
+        self.metrics["pagerank"] = pr
+        self.metrics["communities"] = [list(c) for c in self.communities()]
+
+    def to_payload(self) -> dict:
+        """Serialize for the LangGraph state."""
+        return {
+            "nodes": [{"id": nid, **attrs} for nid, attrs in self.g.nodes(data=True)],
+            "edges": [
+                {"src": u, "dst": v, **data}
+                for u, v, data in self.g.edges(data=True)
+            ],
+            "metrics": self.metrics,
+        }
 
     def core_abstractions(self, k: int = 15) -> List[Tuple[str, float]]:
         """Finds the Top-K architecturally important INTERNAL nodes."""

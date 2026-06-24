@@ -40,6 +40,7 @@ requests
 *.swo
 
 # Project specific
-output/
 .cache/
 *.log
+/plan
+/Q-Learning-From-Scratch

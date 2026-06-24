@@ -1,5 +1,5 @@
 import asyncio
-from src.codebase_kb.crawler.github import fetch_github_repo
+from codebase_kb.crawler.github import fetch_github_repo
 
 async def fetch_repo_node(state: dict) -> dict:
     """Node 1: downloads the code from github"""

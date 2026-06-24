@@ -1,8 +1,8 @@
-from src.codebase_kb.extract.ast_python import parse_python_file
-from src.codebase_kb.extract.graph import CodeGraph
+from codebase_kb.extract.ast_python import parse_python_file
+from codebase_kb.extract.graph import CodeGraph
 import networkx as nx
 
-def build_code_graph_node(state: dict) -> dict:
+async def build_code_graph_node(state: dict) -> dict:
     """Node 2: Parses the raw text into the NetworkX AST Graph."""
     cg = CodeGraph()
     
@@ -13,5 +13,6 @@ def build_code_graph_node(state: dict) -> dict:
             cg.add_nodes(nodes)
             cg.add_edges(edges)
         
-    serialized_graph = nx.node_link_data(cg.g)
-    return {"code_graph": serialized_graph}
+    cg.recompute_metrics()
+    payload = cg.to_payload()
+    return {"code_graph": payload}

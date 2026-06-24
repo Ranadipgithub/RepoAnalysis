@@ -5,12 +5,19 @@ from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 
-# 1. Initialize the Decryption Cipher
-MASTER_KEY = os.getenv("APP_SECRET_KEY") 
-if not MASTER_KEY:
-    raise RuntimeError("APP_SECRET_KEY environment variable is not set.")
+def _get_cipher():
+    key = os.getenv("APP_SECRET_KEY")
+    if not key:
+        raise RuntimeError("APP_SECRET_KEY not set")
+    try:
+        return Fernet(key.encode())
+    except (ValueError, TypeError):
+        # User provided a raw 32-byte string; derive a Fernet key from it
+        import base64, hashlib
+        derived = base64.urlsafe_b64encode(hashlib.sha256(key.encode()).digest())
+        return Fernet(derived)
 
-cipher_suite = Fernet(MASTER_KEY.encode())
+cipher_suite = _get_cipher()
 
 async def get_provider_for_user(user_id: str, requested_provider: str, db_session):
     """

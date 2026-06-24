@@ -2,7 +2,6 @@ import asyncio
 import base64
 from typing import List, Optional, Tuple
 import httpx
-from codebase_kb.crawler.configs.config import redirect_uri
 from codebase_kb.crawler.models.models import FileEntry,CommitEntry
 from codebase_kb.crawler.utils.tree_parser import build_tree,print_tree
 import dotenv
@@ -39,7 +38,7 @@ async def exchange_code_for_token(
             "client_id": client_id,
         }
         
-        device_code_response=requests.post(url=url,data=data,headers=headers)
+        device_code_response=await asyncio.to_thread(requests.post,url=url,data=data,headers=headers)
         device_code_response=device_code_response.json()
         print('='*50)
         print("\n")
@@ -86,10 +85,11 @@ token: str,
 ) -> httpx.Response:
     """Make a request to GitHub API with authentication and rate limit handling."""
     headers = {
-        "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json",
         **kwargs.pop("headers", {}),
     }
+    if token:
+        headers["Authorization"] = f"token {token}"
     response = await client.request(method, url, headers=headers, **kwargs)
 
     # Check for rate limit exceeded
@@ -275,8 +275,8 @@ async def _get_tree_recursive(
     paths=[]
     for d in data["tree"]:
         paths.append(d["path"])
-    global project_tree
-    project_tree=build_tree(paths=paths)
+    # project_tree is built but not stored globally
+    _ = build_tree(paths=paths)
     return data["tree"]
 
 async def _get_file_raw_bytes(
@@ -311,7 +311,7 @@ async def get_output(
     output=dict()
     github_token=os.getenv("GITHUB_TOKEN")
     if(not github_token):
-        github_token=asyncio.run(exchange_code_for_token(client_id))
+        github_token=await exchange_code_for_token(client_id)
         dotenv.set_key(".env","GITHUB_TOKEN",github_token)
     load_dotenv(override=True)
     entries=await fetch_github_repo(repo_url,github_token)
