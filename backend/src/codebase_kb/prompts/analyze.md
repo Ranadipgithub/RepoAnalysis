@@ -38,6 +38,7 @@ Output a single JSON object fenced with ```json. Follow this exact schema:
 
 Constraints:
 - Only include relationships where the `from` and `to` are EXACT names from the "Identified Abstractions" list.
+- The `from` abstraction MUST be the dependent (the one doing the using/calling). The `to` abstraction MUST be the foundation (the one being used/called). Do not use data flow direction.
 - Do NOT output self-relationships (where `from` equals `to`).
 - Keep the `label` concise (under 60 characters).
 - Write the summary and labels in {{ language }}.

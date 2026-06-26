@@ -34,15 +34,17 @@ async def main():
 
     # We patch the router so it bypasses the database API key lookup and uses our HF model directly
     with patch("codebase_kb.graph.nodes.identify_abstractions_node.get_provider_for_user", new_callable=AsyncMock) as mock_get_provider1, \
-         patch("codebase_kb.graph.nodes.analyze_relationships.get_provider_for_user", new_callable=AsyncMock) as mock_get_provider2:
+         patch("codebase_kb.graph.nodes.analyze_relationships.get_provider_for_user", new_callable=AsyncMock) as mock_get_provider2, \
+         patch("codebase_kb.llm.router.get_provider_for_user", new_callable=AsyncMock) as mock_get_provider3:
         mock_get_provider1.return_value = mock_llm
         mock_get_provider2.return_value = mock_llm
+        mock_get_provider3.return_value = mock_llm
         
         print("Compiling LangGraph...")
         graph = build_graph()
         
         # Test input state using a very small public repo that actually contains Python code
-        repo_url = "https://github.com/KaiAllAlone/Smart_Day_Planner_Agno_Framework"
+        repo_url = "https://github.com/KaiAllAlone/Amazon_Scraper_and_Product_Recommender-WIP-"
         
         state = {
             "run_id": "test_run_123",
@@ -51,7 +53,8 @@ async def main():
             "github_token": os.getenv("GITHUB_TOKEN", ""), # Optional
             "provider": "huggingface",
             "max_abstractions": 2,
-            "language": "english"
+            "language": "english",
+            "use_llm_order_rationale": True
         }
         
         config = {
@@ -67,10 +70,10 @@ async def main():
             result = await graph.ainvoke(state, config=config)
             print("\n=== Workflow Completed Successfully! ===")
             print("\nIdentified Abstractions:")
-            print(result)
-            # for abs_ in result.get("abstractions", []):
-            #     print(abs_)
-            #     print(f" - {abs_.get('name')}: {abs_.get('description')}")
+            # print(result)
+            for abs_ in result.get("abstractions", []):
+                print(abs_)
+                print(f" - {abs_.get('name')}: {abs_.get('description')}")
             
             print("\nArchitectural Summary:")
             print(result.get("summary", "No summary available."))
@@ -78,6 +81,19 @@ async def main():
             print("\nIdentified Relationships:")
             for rel in result.get("relationships", []):
                 print(f" - [{rel.get('from')}] --({rel.get('label')} [{rel.get('kind')}])--> [{rel.get('to')}]")
+                
+            print("\nChapter Order:")
+            chapter_order = result.get("chapter_order", [])
+            print(chapter_order)
+            
+            if chapter_order:
+                print("\nOrdered Chapters Details:")
+                abstractions = result.get("abstractions", [])
+                for idx in chapter_order:
+                    if idx < len(abstractions):
+                        abs_ = abstractions[idx]
+                        print(f" [{idx}] {abs_.get('name')}: {abs_.get('description')}")
+            
         except Exception as e:
             import traceback
             traceback.print_exc()
