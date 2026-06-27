@@ -2,8 +2,8 @@ import asyncio
 import base64
 from typing import List, Optional, Tuple
 import httpx
-from src.codebase_kb.crawler.models.models import FileEntry,CommitEntry
-from src.codebase_kb.crawler.utils.tree_parser import build_tree,print_tree
+from codebase_kb.crawler.models.models import FileEntry,CommitEntry
+from codebase_kb.crawler.utils.tree_parser import build_tree,print_tree
 import dotenv
 import tqdm
 import os

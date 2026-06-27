@@ -1,6 +1,6 @@
 import asyncio
 from codebase_kb.crawler.github import fetch_github_repo, get_output
-from src.codebase_kb.graph.state import KnowledgeBuilderState
+from codebase_kb.graph.state import KnowledgeBuilderState
 
 async def fetch_repo_node(state: KnowledgeBuilderState) -> dict:
     """Node 1: downloads the code from github"""
