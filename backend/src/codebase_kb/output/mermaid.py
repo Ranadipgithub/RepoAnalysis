@@ -1,6 +1,6 @@
-from src.codebase_kb.extract.models import CodeEdge
+from codebase_kb.extract.models import CodeEdge
 from typing import List
-from src.codebase_kb.extract.models import CodeNode
+from codebase_kb.extract.models import CodeNode
 import re
 
 def sanitize_id(raw_id: str) -> str:
@@ -118,4 +118,43 @@ def build_chapter_sequence(abstraction: dict, relationships: list[dict]) -> str:
         
         lines.append(f'    {safe_f}->>{safe_t}: {safe_lbl}')
         
+    return "\n".join(lines)
+
+def build_overview_diagram(abstractions: list[dict], relationships: list[dict]) -> str:
+    """
+    Builds a high-level flowchart diagram of the identified abstractions and their relationships.
+    """
+    if not abstractions:
+        return ""
+        
+    lines = ["flowchart TD"]
+    
+    # Add nodes for each abstraction
+    for abs_data in abstractions:
+        name = abs_data.get("name")
+        if not name: continue
+        safe_id = sanitize_id(name)
+        label = str(name).replace('"', "'")
+        lines.append(f'    {safe_id}["{label}"]')
+        
+    # Add edges for relationships
+    for r in relationships:
+        f = r.get("from")
+        t = r.get("to")
+        if not f or not t: continue
+        
+        safe_f = sanitize_id(f)
+        safe_t = sanitize_id(t)
+        
+        # Determine edge style based on kind or label
+        kind = r.get("kind", "")
+        lbl = str(r.get("label", kind)).replace('"', "'")
+        
+        if kind == "inherits":
+            lines.append(f'    {safe_f} ==>|"{lbl}"| {safe_t}')
+        elif kind == "contains":
+            lines.append(f'    {safe_f} -->|"{lbl}"| {safe_t}')
+        else:
+            lines.append(f'    {safe_f} -.->|"{lbl}"| {safe_t}')
+            
     return "\n".join(lines)

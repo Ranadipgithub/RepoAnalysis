@@ -53,6 +53,7 @@ class KnowledgeBuilderState(TypedDict, total=False):
     # Produced by combine_tutorial
     final_output_dir: str
     artifacts: list[dict[str, Any]]
+    database_payload: dict[str, Any]
 
     # Cross-cutting
     errors: list[dict[str, Any]]

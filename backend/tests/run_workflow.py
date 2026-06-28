@@ -47,7 +47,7 @@ async def main():
         graph = build_graph()
         
         # Test input state using a very small public repo that actually contains Python code
-        repo_url = "https://github.com/KaiAllAlone/Amazon_Scraper_and_Product_Recommender-WIP-"
+        repo_url = "https://github.com/fastapi/fastapi"
         
         state = {
             "run_id": "test_run_123",
@@ -56,7 +56,7 @@ async def main():
             "repo_url": repo_url,
             "github_token": os.getenv("GITHUB_TOKEN", ""), # Optional
             "provider": "huggingface",
-            "max_abstractions": 2,
+            "max_abstractions": 15,
             "language": "english",
             "use_llm_order_rationale": True
         }
@@ -105,9 +105,26 @@ async def main():
                 for chapter in chapters:
                     print(f"\nGenerated chapter for: {chapter.get('name')} (Index: {chapter.get('index')})")
                     markdown_result = chapter.get("markdown", "")
-                    print(markdown_result)
+                    try:
+                        print(markdown_result)
+                    except UnicodeEncodeError:
+                        print(markdown_result.encode("utf-8", errors="replace").decode("utf-8", errors="replace"))
                     print("\n" + "="*50 + "\n")
             
+            print("\n=== Testing combine_tutorial_node (via graph.ainvoke) ===")
+            database_payload = result.get("database_payload")
+            if not database_payload:
+                print("No database payload generated!")
+            else:
+                print(f"Project Name: {database_payload.get('project_name')}")
+                print(f"Total Chapters: {database_payload.get('total_chapters')}")
+                print("\nIndex Markdown:")
+                try:
+                    print(database_payload.get("index_markdown", ""))
+                except UnicodeEncodeError:
+                    print(database_payload.get("index_markdown", "").encode("utf-8", errors="replace").decode("utf-8", errors="replace"))
+                print("\n" + "="*50 + "\n")
+
         except Exception as e:
             import traceback
             traceback.print_exc()
